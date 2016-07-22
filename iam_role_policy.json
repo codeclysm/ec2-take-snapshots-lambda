@@ -1,5 +1,5 @@
 {
-    "Version": "2012-10-17",
+    "Version": "2016-07-22",
     "Statement": [
         {
             "Effect": "Allow",
@@ -17,7 +17,8 @@
                 "ec2:DescribeVolumes",
                 "ec2:DescribeSnapshots",
                 "ec2:CreateSnapshot",
-                "ec2:CreateTags"
+                "ec2:CreateTags",
+                "ec2:DescribeInstances"
             ],
             "Resource": "*"
         }
