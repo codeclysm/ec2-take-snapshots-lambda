@@ -1,4 +1,8 @@
+import logging
+
 from ec2_take_snapshots import *
+
+logging.basicConfig()
 
 event = {
     "volumes": ["all"],

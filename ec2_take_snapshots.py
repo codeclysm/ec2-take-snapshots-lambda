@@ -1,5 +1,9 @@
-from __future__ import print_function
+import logging
+
 from boto3 import resource
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 def main(event, context):
     event = validate_event(event)
@@ -22,9 +26,14 @@ def main(event, context):
         if volumes.count == 0:
             raise Exception("No volumes found with the given tags.")
 
+    errors = []
+
     for volume in volumes:
-        take_snapshot(volume, event["extra_tags"], ec2, event["dry_run"])
+        errors += take_snapshot(volume, event["extra_tags"], ec2, event["dry_run"])
         snap_count += 1
+
+    if len(errors) > 0:
+        raise Exception("errors during the backup")
 
 def validate_event(event):
     if "volumes" not in event and "volume_tags" not in event:
@@ -42,20 +51,26 @@ def take_snapshot(volume, extra_tags, ec2, dry_run):
     tags = get_instance_tags(volume, ec2)
     tags.update(extra_tags)
     tags_kwargs = process(tags)
-    print(tags_kwargs)
 
-    if not dry_run:
-        snapshot = volume.create_snapshot(Description='Created with ec2-take-snapshots')
-        if tags_kwargs:
-            snapshot.create_tags(**tags_kwargs)
-        not_really = ""
-    else:
-        snapshot = None
-        not_really = " (not really)"
-    print("Snapshot {} created{} for volume {} with tags {}".format(
-          snapshot.snapshot_id if snapshot else "snapshot_id",
-          not_really, volume.volume_id, tags_kwargs["Tags"])
-          )
+    errors = []
+
+    try:
+        if not dry_run:
+            snapshot = volume.create_snapshot(Description='Created with ec2-take-snapshots')
+            if tags_kwargs:
+                snapshot.create_tags(**tags_kwargs)
+            not_really = ""
+        else:
+            snapshot = None
+            not_really = " (not really)"
+        logger.info("Snapshot {} created{} for volume {} with tags {}".format(
+            snapshot.snapshot_id if snapshot else "snapshot_id",
+            not_really, volume.volume_id, tags_kwargs["Tags"])
+            )
+    except Exception as e:
+        logger.error(e)
+        errors.append(e)
+    return errors
 
 def get_instance_tags(volume, ec2):
     if len(volume.attachments) < 1:
